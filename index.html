@@ -2,19 +2,38 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Torneo</title>
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       text-align: center;
       margin-top: 40px;
       background-color: #1f3a5f;
       color: white;
     }
 
-    input, button {
+    input, button, textarea {
       margin: 5px;
       padding: 6px;
+      border-radius: 5px;
+      border: none;
+    }
+
+    input, textarea {
+      background: white;
+      color: black;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+      padding: 8px 15px;
+    }
+
+    button:hover {
+      background-color: #2980b9;
     }
 
     h2 {
@@ -53,19 +72,6 @@
 
     .tabla-posiciones tr:nth-child(even) {
       background-color: #f2f2f2;
-    }
-
-    button {
-      background-color: #3498db;
-      color: white;
-      border: none;
-      padding: 8px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #2980b9;
     }
 
     .btn-reset {
@@ -142,6 +148,13 @@
       background: rgba(255,255,255,0.06);
       border-radius: 8px;
     }
+
+    textarea {
+      width: 80%;
+      max-width: 500px;
+      min-height: 100px;
+      resize: vertical;
+    }
   </style>
 </head>
 <body>
@@ -149,8 +162,8 @@
   <h1>MORTAL KOMBATCITO</h1>
   <h3 class="firma">R.E.C.A.</h3>
 
-  <label>Cantidad de jugadores (2-8):</label>
-  <input type="number" id="numPlayers" min="2" max="30">
+  <label>Cantidad de jugadores (2 o más):</label>
+  <input type="number" id="numPlayers" min="2">
   <button onclick="crearInputs()">Confirmar</button>
   <button class="btn-reset" onclick="resetearTorneo()">Resetear torneo</button>
 
@@ -166,9 +179,13 @@
     </div>
 
     <div class="bloque-editor">
-      <h3>Añadir jugador</h3>
-      <input type="text" id="nuevoJugadorNombre" placeholder="Nombre del nuevo jugador">
-      <button class="btn-agregar" onclick="agregarJugador()">Añadir jugador</button>
+      <h3>Añadir jugadores</h3>
+      <p>Escribe un nombre por línea:</p>
+      <textarea id="nuevosJugadores" placeholder="Ejemplo:
+Scorpion
+Sub-Zero
+Raiden"></textarea><br>
+      <button class="btn-agregar" onclick="agregarVariosJugadores()">Añadir jugadores</button>
     </div>
   </div>
 
@@ -228,8 +245,8 @@
       let contenedor = document.getElementById("contenedorNombres");
       contenedor.innerHTML = "";
 
-      if (isNaN(cantidad) || cantidad < 2 || cantidad > 30) {
-        alert("Ingresa una cantidad válida entre 2 y 30 jugadores.");
+      if (isNaN(cantidad) || cantidad < 2) {
+        alert("Ingresa una cantidad válida de al menos 2 jugadores.");
         return;
       }
 
@@ -335,24 +352,34 @@
       alert("Nombres actualizados correctamente.");
     }
 
-    function agregarJugador() {
-      const input = document.getElementById("nuevoJugadorNombre");
-      const nombre = input.value.trim();
+    function agregarVariosJugadores() {
+      const texto = document.getElementById("nuevosJugadores").value.trim();
 
-      if (nombre === "") {
-        alert("Escribe el nombre del nuevo jugador.");
+      if (texto === "") {
+        alert("Escribe al menos un nombre.");
         return;
       }
 
-      jugadores.push({
-        id: generarIdJugador(),
-        nombre: nombre
+      const nombres = texto
+        .split("\n")
+        .map(n => n.trim())
+        .filter(n => n !== "");
+
+      if (nombres.length === 0) {
+        alert("No hay nombres válidos.");
+        return;
+      }
+
+      nombres.forEach(nombre => {
+        jugadores.push({
+          id: generarIdJugador(),
+          nombre: nombre
+        });
       });
 
-      input.value = "";
+      document.getElementById("nuevosJugadores").value = "";
       document.getElementById("numPlayers").value = jugadores.length;
 
-      // Reorganiza rondas como si siempre hubiera estado
       regenerarTorneoCompleto(vueltaGenerada);
 
       cargarPanelEdicion();
@@ -386,6 +413,7 @@
             });
           }
         }
+
         lista.splice(1, 0, lista.pop());
       }
 
@@ -399,7 +427,6 @@
     function regenerarTorneoCompleto(incluirVuelta) {
       const resultadosViejos = { ...resultados };
       const partidosViejos = [...partidos];
-
       const mapaResultados = {};
 
       partidosViejos.forEach((p, index) => {
@@ -459,6 +486,11 @@
     function mostrarFixture() {
       let contenedor = document.getElementById("contenedorFixture");
       contenedor.innerHTML = "<h2>Fixture del Torneo</h2>";
+
+      if (partidos.length === 0) {
+        contenedor.innerHTML += "<p>No hay partidos generados todavía.</p>";
+        return;
+      }
 
       let rondaActual = 0;
 
@@ -578,7 +610,7 @@
         document.getElementById("contenedorFixture").innerHTML = "";
         document.getElementById("contenedorTabla").innerHTML = "";
         document.getElementById("inputsEdicion").innerHTML = "";
-        document.getElementById("nuevoJugadorNombre").value = "";
+        document.getElementById("nuevosJugadores").value = "";
         document.getElementById("panelEdicion").classList.add("oculto");
       }
     }
