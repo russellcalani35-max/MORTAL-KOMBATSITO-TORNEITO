@@ -1,274 +1,387 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Torneo</title>
-<style>
-body {
-    font-family: Arial;
-    text-align: center;
-    margin-top: 40px;
-    background-color: #1f3a5f; /* Azul oscuro elegante */
-    color: white; /* Para que el texto se vea bien */
-}
-input, button {
-    margin: 5px;
-    padding: 6px;
-}
-h2 {
-    margin-top: 30px;
-}
+  <meta charset="UTF-8">
+  <title>Torneo</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 40px;
+      background-color: #1f3a5f;
+      color: white;
+    }
 
-.tabla-posiciones {
-    margin: 20px auto;
-    border-collapse: collapse;
-    width: 70%;
-    background-color: white;
-}
+    input, button {
+      margin: 5px;
+      padding: 6px;
+    }
 
-.tabla-posiciones th {
-    background-color: #2c3e50;
-    color: white;
-    padding: 10px;
-}
+    h2 {
+      margin-top: 30px;
+    }
 
-.tabla-posiciones td {
-    padding: 10px;
-    text-align: center;
-    border-bottom: 1px dashed #999;
-}
+    .tabla-posiciones {
+      width: 60%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: white;
+      color: black;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
 
-.tabla-posiciones th {
-    border-bottom: 2px solid #2c3e50;
-}
+    .tabla-posiciones th {
+      background-color: #2c3e50;
+      color: white;
+      padding: 10px;
+      border-bottom: 2px solid #2c3e50;
+    }
 
-.tabla-posiciones td,
-.tabla-posiciones th {
-    border-right: 1px dashed #ccc;
-}
+    .tabla-posiciones td {
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px dashed #999;
+    }
 
-.tabla-posiciones td:last-child,
-.tabla-posiciones th:last-child {
-    border-right: none;
-}
+    .tabla-posiciones td, .tabla-posiciones th {
+      border-right: 1px dashed #ccc;
+    }
 
-.tabla-posiciones {
-    width: 60%;
-    margin: 20px auto;
-    border-collapse: collapse;
-    background: white;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
+    .tabla-posiciones td:last-child, .tabla-posiciones th:last-child {
+      border-right: none;
+    }
 
-.tabla-posiciones {
-    background: white;
-    color: black;
-}
+    .tabla-posiciones tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
 
-input {
-    background: white;
-    color: black;
-}
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
 
-.tabla-posiciones tr:nth-child(even) {
-    background-color: #f2f2f2;
-}
+    button:hover {
+      background-color: #2980b9;
+    }
 
-button {
-    background-color: #3498db;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-}
+    .btn-reset {
+      background-color: #e74c3c;
+    }
 
-button:hover {
-    background-color: #2980b9;
-}
-</style>
+    .btn-reset:hover {
+      background-color: #c0392b;
+    }
+
+    .btn-vuelta {
+      background-color: #27ae60;
+    }
+
+    .btn-vuelta:hover {
+      background-color: #1e8449;
+    }
+
+    .botonera {
+      margin-top: 15px;
+    }
+
+    .partido {
+      margin: 8px 0;
+    }
+
+    .firma {
+      margin-top: -10px;
+      margin-bottom: 20px;
+      font-weight: normal;
+      opacity: 0.9;
+    }
+  </style>
 </head>
 <body>
 
-<h1>MORTAL KOMBATCITO</h1>
-<h3 class="firma">R.E.C.A.</h3>
+  <h1>MORTAL KOMBATCITO</h1>
+  <h3 class="firma">R.E.C.A.</h3>
 
-<label>Cantidad de jugadores (2-8):</label>
-<input type="number" id="numPlayers" min="2" max="8">
-<button onclick="crearInputs()">Confirmar</button>
+  <label>Cantidad de jugadores (2-8):</label>
+  <input type="number" id="numPlayers" min="2" max="8">
+  <button onclick="crearInputs()">Confirmar</button>
+  <button class="btn-reset" onclick="resetearTorneo()">Resetear torneo</button>
 
-<div id="contenedorNombres"></div>
-<div id="contenedorFixture"></div>
-<div id="contenedorTabla"></div>
+  <div id="contenedorNombres"></div>
+  <div id="contenedorFixture"></div>
+  <div id="contenedorTabla"></div>
 
-<script>
+  <script>
+    let jugadores = [];
+    let partidos = [];
+    let resultados = {};
+    let vueltaGenerada = false;
 
-let jugadores = [];
-let partidos = [];
-let resultados = {};
-
-function crearInputs() {
-    let cantidad = document.getElementById("numPlayers").value;
-    let contenedor = document.getElementById("contenedorNombres");
-    contenedor.innerHTML = "";
-
-    for (let i = 0; i < cantidad; i++) {
-        contenedor.innerHTML += 
-            `<input type="text" placeholder="Nombre jugador ${i+1}" id="jugador${i}"><br>`;
+    function guardarEstado() {
+      const estado = {
+        jugadores,
+        partidos,
+        resultados,
+        vueltaGenerada,
+        numPlayers: document.getElementById("numPlayers").value
+      };
+      localStorage.setItem("torneoMK", JSON.stringify(estado));
     }
 
-    contenedor.innerHTML += 
-        `<button onclick="guardarJugadores()">Guardar Jugadores</button>`;
-}
+    function cargarEstado() {
+      const estadoGuardado = localStorage.getItem("torneoMK");
 
-function guardarJugadores() {
-    jugadores = [];
-    let cantidad = document.getElementById("numPlayers").value;
+      if (!estadoGuardado) return;
 
-    for (let i = 0; i < cantidad; i++) {
-        let nombre = document.getElementById("jugador" + i).value;
+      const estado = JSON.parse(estadoGuardado);
+
+      jugadores = estado.jugadores || [];
+      partidos = estado.partidos || [];
+      resultados = estado.resultados || {};
+      vueltaGenerada = estado.vueltaGenerada || false;
+
+      if (estado.numPlayers) {
+        document.getElementById("numPlayers").value = estado.numPlayers;
+      }
+
+      if (jugadores.length > 0) {
+        mostrarFixture();
+        calcularTabla();
+      }
+    }
+
+    function crearInputs() {
+      let cantidad = parseInt(document.getElementById("numPlayers").value);
+      let contenedor = document.getElementById("contenedorNombres");
+
+      contenedor.innerHTML = "";
+
+      if (isNaN(cantidad) || cantidad < 2 || cantidad > 8) {
+        alert("Ingresa una cantidad válida entre 2 y 8 jugadores.");
+        return;
+      }
+
+      for (let i = 0; i < cantidad; i++) {
+        let valorExistente = jugadores[i] ? jugadores[i] : "";
+        contenedor.innerHTML += `
+          <input type="text" placeholder="Nombre jugador ${i + 1}" id="jugador${i}" value="${valorExistente}"><br>
+        `;
+      }
+
+      contenedor.innerHTML += `<button onclick="guardarJugadores()">Guardar Jugadores</button>`;
+    }
+
+    function guardarJugadores() {
+      jugadores = [];
+      let cantidad = parseInt(document.getElementById("numPlayers").value);
+
+      for (let i = 0; i < cantidad; i++) {
+        let nombre = document.getElementById("jugador" + i).value.trim();
+
+        if (nombre === "") {
+          alert("Todos los jugadores deben tener nombre.");
+          return;
+        }
+
         jugadores.push(nombre);
+      }
+
+      // Reiniciar torneo al guardar nuevos jugadores
+      resultados = {};
+      vueltaGenerada = false;
+      generarFixture();
+      mostrarFixture();
+      calcularTabla();
+      guardarEstado();
     }
 
-    generarFixture();
-    mostrarFixture();
+    function generarFixture() {
+      partidos = [];
+      let lista = [...jugadores];
 
-    console.log("Jugadores:", jugadores);
-    console.log("Fixture:", partidos);
-}
-
-function generarFixture() {
-
-    partidos = [];
-    let lista = [...jugadores];
-
-    // Si es impar agregamos "DESCANSA"
-    if (lista.length % 2 !== 0) {
+      if (lista.length % 2 !== 0) {
         lista.push("DESCANSA");
-    }
+      }
 
-    let n = lista.length;
-    let rondas = n - 1;
+      let n = lista.length;
+      let rondas = n - 1;
 
-    for (let r = 0; r < rondas; r++) {
-
+      for (let r = 0; r < rondas; r++) {
         for (let i = 0; i < n / 2; i++) {
-            let jug1 = lista[i];
-            let jug2 = lista[n - 1 - i];
+          let jug1 = lista[i];
+          let jug2 = lista[n - 1 - i];
 
-            if (jug1 !== "DESCANSA" && jug2 !== "DESCANSA") {
-                partidos.push({ jug1, jug2, ronda: r + 1 });
-            }
+          if (jug1 !== "DESCANSA" && jug2 !== "DESCANSA") {
+            partidos.push({
+              jug1,
+              jug2,
+              ronda: r + 1,
+              tipo: "Ida"
+            });
+          }
         }
 
-        // Rotación tipo circular
         lista.splice(1, 0, lista.pop());
+      }
     }
 
-    console.log("Partidos generados:", partidos);
-}
+    function generarVuelta() {
+      if (vueltaGenerada) {
+        alert("La vuelta ya fue generada.");
+        return;
+      }
 
-function mostrarFixture() {
+      const partidosIda = partidos.filter(p => p.tipo === "Ida");
+      const ultimaRonda = Math.max(...partidosIda.map(p => p.ronda));
 
-    let contenedor = document.getElementById("contenedorFixture");
-    contenedor.innerHTML = "<h2>Fixture del Torneo</h2>";
+      partidosIda.forEach(p => {
+        partidos.push({
+          jug1: p.jug2,
+          jug2: p.jug1,
+          ronda: p.ronda + ultimaRonda,
+          tipo: "Vuelta"
+        });
+      });
 
-    let rondaActual = 0;
+      vueltaGenerada = true;
+      mostrarFixture();
+      calcularTabla();
+      guardarEstado();
+    }
 
-    partidos.forEach((partido, index) => {
+    function mostrarFixture() {
+      let contenedor = document.getElementById("contenedorFixture");
+      contenedor.innerHTML = "<h2>Fixture del Torneo</h2>";
 
+      let rondaActual = 0;
+
+      partidos.forEach((partido, index) => {
         if (partido.ronda !== rondaActual) {
-            rondaActual = partido.ronda;
-            contenedor.innerHTML += `<h3>Ronda ${rondaActual}</h3>`;
+          rondaActual = partido.ronda;
+          contenedor.innerHTML += `<h3>Ronda ${rondaActual} ${partido.tipo ? "- " + partido.tipo : ""}</h3>`;
         }
+
+        let valorA = resultados[index] ? resultados[index].a : "";
+        let valorB = resultados[index] ? resultados[index].b : "";
 
         contenedor.innerHTML += `
-            <div>
-                ${partido.jug1}
-                <input type="number" min="0" id="p${index}a" style="width:60px">
-                vs
-                <input type="number" min="0" id="p${index}b" style="width:60px">
-                ${partido.jug2}
-            </div>
+          <div class="partido">
+            ${partido.jug1}
+            <input type="number" min="0" id="p${index}a" value="${valorA}" style="width:60px" onchange="guardarResultado(${index})">
+            vs
+            <input type="number" min="0" id="p${index}b" value="${valorB}" style="width:60px" onchange="guardarResultado(${index})">
+            ${partido.jug2}
+          </div>
         `;
-    });
+      });
 
-    contenedor.innerHTML += `<br><button onclick="calcularTabla()">Mostrar Tabla</button>`;
-}
+      contenedor.innerHTML += `
+        <div class="botonera">
+          <button onclick="calcularTabla()">Mostrar Tabla</button>
+          <button class="btn-vuelta" onclick="generarVuelta()">Jugar Vuelta</button>
+        </div>
+      `;
+    }
 
-function calcularTabla() {
+    function guardarResultado(index) {
+      let puntos1 = parseInt(document.getElementById("p" + index + "a").value);
+      let puntos2 = parseInt(document.getElementById("p" + index + "b").value);
 
-    resultados = {};
+      if (!isNaN(puntos1) && !isNaN(puntos2)) {
+        resultados[index] = { a: puntos1, b: puntos2 };
+      } else {
+        delete resultados[index];
+      }
 
-    // Inicializar estructura
-    jugadores.forEach(j => {
-        resultados[j] = [];
-    });
+      guardarEstado();
+      calcularTabla();
+    }
 
-    partidos.forEach((partido, index) => {
+    function calcularTabla() {
+      let contenedor = document.getElementById("contenedorTabla");
+      contenedor.innerHTML = "<h2>Tabla de Posiciones</h2>";
 
-        let puntos1 = parseInt(document.getElementById("p" + index + "a").value);
-        let puntos2 = parseInt(document.getElementById("p" + index + "b").value);
+      let acumulado = {};
 
-        if (!isNaN(puntos1) && !isNaN(puntos2)) {
-            resultados[partido.jug1].push(puntos1);
-            resultados[partido.jug2].push(puntos2);
+      jugadores.forEach(j => {
+        acumulado[j] = [];
+      });
+
+      partidos.forEach((partido, index) => {
+        if (resultados[index]) {
+          acumulado[partido.jug1].push(resultados[index].a);
+          acumulado[partido.jug2].push(resultados[index].b);
         }
-    });
+      });
 
-    mostrarTabla();
-}
+      let tabla = [];
 
-function mostrarTabla() {
-
-    let contenedor = document.getElementById("contenedorTabla");
-    contenedor.innerHTML = "<h2>Tabla de Posiciones</h2>";
-
-    let tabla = [];
-
-    jugadores.forEach(j => {
-        let total = resultados[j].reduce((a,b) => a + b, 0);
+      jugadores.forEach(j => {
+        let detalle = acumulado[j];
+        let total = detalle.reduce((a, b) => a + b, 0);
 
         tabla.push({
-            nombre: j,
-            total: total,
-            detalle: resultados[j]
+          nombre: j,
+          total: total,
+          detalle: detalle
         });
-    });
+      });
 
-    tabla.sort((a,b) => b.total - a.total);
+      tabla.sort((a, b) => b.total - a.total);
 
-    let html = `
+      let html = `
         <table class="tabla-posiciones">
-            <thead>
-                <tr>
-                    <th>Jugador</th>
-                    <th>Total</th>
-                    <th>Puntos por partido</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    tabla.forEach(j => {
-        html += `
+          <thead>
             <tr>
-                <td>${j.nombre}</td>
-                <td>${j.total}</td>
-                <td>${j.detalle.join(" - ")}</td>
+              <th>Jugador</th>
+              <th>Total</th>
+              <th>Puntos por partido</th>
             </tr>
+          </thead>
+          <tbody>
+      `;
+
+      tabla.forEach(j => {
+        html += `
+          <tr>
+            <td>${j.nombre}</td>
+            <td>${j.total}</td>
+            <td>${j.detalle.length > 0 ? j.detalle.join(" - ") : "-"}</td>
+          </tr>
         `;
-    });
+      });
 
-    html += `
-            </tbody>
+      html += `
+          </tbody>
         </table>
-    `;
+      `;
 
-    contenedor.innerHTML += html;
-}
+      contenedor.innerHTML += html;
+      guardarEstado();
+    }
 
-</script>
+    function resetearTorneo() {
+      if (confirm("¿Seguro que quieres resetear todo el torneo?")) {
+        localStorage.removeItem("torneoMK");
+        jugadores = [];
+        partidos = [];
+        resultados = {};
+        vueltaGenerada = false;
+
+        document.getElementById("numPlayers").value = "";
+        document.getElementById("contenedorNombres").innerHTML = "";
+        document.getElementById("contenedorFixture").innerHTML = "";
+        document.getElementById("contenedorTabla").innerHTML = "";
+      }
+    }
+
+    window.onload = function () {
+      cargarEstado();
+    };
+  </script>
 
 </body>
-</html> 
+</html>
