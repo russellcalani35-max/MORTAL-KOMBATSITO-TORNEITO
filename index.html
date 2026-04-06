@@ -22,7 +22,7 @@
     }
 
     .tabla-posiciones {
-      width: 60%;
+      width: 75%;
       margin: 20px auto;
       border-collapse: collapse;
       background: white;
@@ -84,6 +84,22 @@
       background-color: #1e8449;
     }
 
+    .btn-editar {
+      background-color: #f39c12;
+    }
+
+    .btn-editar:hover {
+      background-color: #d68910;
+    }
+
+    .btn-agregar {
+      background-color: #8e44ad;
+    }
+
+    .btn-agregar:hover {
+      background-color: #6c3483;
+    }
+
     .botonera {
       margin-top: 15px;
     }
@@ -98,6 +114,19 @@
       font-weight: normal;
       opacity: 0.9;
     }
+
+    .panel {
+      margin: 20px auto;
+      width: 80%;
+      max-width: 900px;
+      background: rgba(255,255,255,0.08);
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .jugador-edit {
+      margin: 6px 0;
+    }
   </style>
 </head>
 <body>
@@ -106,19 +135,31 @@
   <h3 class="firma">R.E.C.A.</h3>
 
   <label>Cantidad de jugadores (2-8):</label>
-  <input type="number" id="numPlayers" min="2" max="8">
+  <input type="number" id="numPlayers" min="2" max="30">
   <button onclick="crearInputs()">Confirmar</button>
   <button class="btn-reset" onclick="resetearTorneo()">Resetear torneo</button>
 
   <div id="contenedorNombres"></div>
+  <div id="panelEdicion"></div>
   <div id="contenedorFixture"></div>
   <div id="contenedorTabla"></div>
 
   <script>
-    let jugadores = [];
-    let partidos = [];
-    let resultados = {};
+    let jugadores = []; 
+    let partidos = []; 
+    let resultados = {}; 
     let vueltaGenerada = false;
+    let ultimoJugadorId = 0;
+
+    function generarIdJugador() {
+      ultimoJugadorId++;
+      return ultimoJugadorId;
+    }
+
+    function obtenerNombreJugador(id) {
+      const jugador = jugadores.find(j => j.id === id);
+      return jugador ? jugador.nombre : "Desconocido";
+    }
 
     function guardarEstado() {
       const estado = {
@@ -126,6 +167,7 @@
         partidos,
         resultados,
         vueltaGenerada,
+        ultimoJugadorId,
         numPlayers: document.getElementById("numPlayers").value
       };
       localStorage.setItem("torneoMK", JSON.stringify(estado));
@@ -133,7 +175,6 @@
 
     function cargarEstado() {
       const estadoGuardado = localStorage.getItem("torneoMK");
-
       if (!estadoGuardado) return;
 
       const estado = JSON.parse(estadoGuardado);
@@ -142,12 +183,14 @@
       partidos = estado.partidos || [];
       resultados = estado.resultados || {};
       vueltaGenerada = estado.vueltaGenerada || false;
+      ultimoJugadorId = estado.ultimoJugadorId || 0;
 
       if (estado.numPlayers) {
         document.getElementById("numPlayers").value = estado.numPlayers;
       }
 
       if (jugadores.length > 0) {
+        renderPanelEdicion();
         mostrarFixture();
         calcularTabla();
       }
@@ -156,26 +199,29 @@
     function crearInputs() {
       let cantidad = parseInt(document.getElementById("numPlayers").value);
       let contenedor = document.getElementById("contenedorNombres");
-
       contenedor.innerHTML = "";
 
-      if (isNaN(cantidad) || cantidad < 2 || cantidad > 8) {
-        alert("Ingresa una cantidad válida entre 2 y 8 jugadores.");
+      if (isNaN(cantidad) || cantidad < 2) {
+        alert("Ingresa una cantidad válida de jugadores.");
         return;
       }
 
       for (let i = 0; i < cantidad; i++) {
-        let valorExistente = jugadores[i] ? jugadores[i] : "";
         contenedor.innerHTML += `
-          <input type="text" placeholder="Nombre jugador ${i + 1}" id="jugador${i}" value="${valorExistente}"><br>
+          <input type="text" placeholder="Nombre jugador ${i + 1}" id="jugador${i}"><br>
         `;
       }
 
-      contenedor.innerHTML += `<button onclick="guardarJugadores()">Guardar Jugadores</button>`;
+      contenedor.innerHTML += `<button onclick="guardarJugadoresIniciales()">Guardar Jugadores</button>`;
     }
 
-    function guardarJugadores() {
+    function guardarJugadoresIniciales() {
       jugadores = [];
+      partidos = [];
+      resultados = {};
+      vueltaGenerada = false;
+      ultimoJugadorId = 0;
+
       let cantidad = parseInt(document.getElementById("numPlayers").value);
 
       for (let i = 0; i < cantidad; i++) {
@@ -186,21 +232,26 @@
           return;
         }
 
-        jugadores.push(nombre);
+        jugadores.push({
+          id: generarIdJugador(),
+          nombre: nombre
+        });
       }
 
-      // Reiniciar torneo al guardar nuevos jugadores
-      resultados = {};
-      vueltaGenerada = false;
-      generarFixture();
+      generarFixtureInicial();
+      renderPanelEdicion();
       mostrarFixture();
       calcularTabla();
       guardarEstado();
     }
 
-    function generarFixture() {
+    function generarFixtureInicial() {
       partidos = [];
-      let lista = [...jugadores];
+      generarPartidosTodosContraTodos(jugadores.map(j => j.id), "Ida");
+    }
+
+    function generarPartidosTodosContraTodos(idsJugadores, tipo) {
+      let lista = [...idsJugadores];
 
       if (lista.length % 2 !== 0) {
         lista.push("DESCANSA");
@@ -208,6 +259,7 @@
 
       let n = lista.length;
       let rondas = n - 1;
+      let rondaBase = partidos.length > 0 ? Math.max(...partidos.map(p => p.ronda)) : 0;
 
       for (let r = 0; r < rondas; r++) {
         for (let i = 0; i < n / 2; i++) {
@@ -216,10 +268,10 @@
 
           if (jug1 !== "DESCANSA" && jug2 !== "DESCANSA") {
             partidos.push({
-              jug1,
-              jug2,
-              ronda: r + 1,
-              tipo: "Ida"
+              jug1Id: jug1,
+              jug2Id: jug2,
+              ronda: rondaBase + r + 1,
+              tipo: tipo
             });
           }
         }
@@ -239,8 +291,8 @@
 
       partidosIda.forEach(p => {
         partidos.push({
-          jug1: p.jug2,
-          jug2: p.jug1,
+          jug1Id: p.jug2Id,
+          jug2Id: p.jug1Id,
           ronda: p.ronda + ultimaRonda,
           tipo: "Vuelta"
         });
@@ -252,16 +304,139 @@
       guardarEstado();
     }
 
+    function renderPanelEdicion() {
+      const panel = document.getElementById("panelEdicion");
+
+      if (jugadores.length === 0) {
+        panel.innerHTML = "";
+        return;
+      }
+
+      let html = `
+        <div class="panel">
+          <h2>Editar / Agregar jugadores</h2>
+          <div id="listaEdicionJugadores">
+      `;
+
+      jugadores.forEach((jugador, index) => {
+        html += `
+          <div class="jugador-edit">
+            <label>Jugador ${index + 1}:</label>
+            <input type="text" id="editJugador${jugador.id}" value="${jugador.nombre}">
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+          <button class="btn-editar" onclick="guardarEdicionNombres()">Guardar cambios de nombres</button>
+          <hr style="margin:15px 0;">
+          <input type="text" id="nuevoJugadorNombre" placeholder="Nuevo jugador">
+          <button class="btn-agregar" onclick="agregarJugador()">Agregar jugador</button>
+          <button class="btn-agregar" onclick="generarPartidosNuevosJugadores()">Generar versus para nuevos jugadores</button>
+        </div>
+      `;
+
+      panel.innerHTML = html;
+    }
+
+    function guardarEdicionNombres() {
+      jugadores.forEach(jugador => {
+        const input = document.getElementById("editJugador" + jugador.id);
+        if (input) {
+          const nuevoNombre = input.value.trim();
+          if (nuevoNombre !== "") {
+            jugador.nombre = nuevoNombre;
+          }
+        }
+      });
+
+      mostrarFixture();
+      calcularTabla();
+      renderPanelEdicion();
+      guardarEstado();
+    }
+
+    function agregarJugador() {
+      const input = document.getElementById("nuevoJugadorNombre");
+      const nombre = input.value.trim();
+
+      if (nombre === "") {
+        alert("Escribe el nombre del nuevo jugador.");
+        return;
+      }
+
+      jugadores.push({
+        id: generarIdJugador(),
+        nombre: nombre
+      });
+
+      input.value = "";
+      renderPanelEdicion();
+      mostrarFixture();
+      calcularTabla();
+      guardarEstado();
+    }
+
+    function generarPartidosNuevosJugadores() {
+      const jugadoresSinPartidos = jugadores.filter(j => {
+        return !partidos.some(p => p.jug1Id === j.id || p.jug2Id === j.id);
+      });
+
+      if (jugadoresSinPartidos.length === 0) {
+        alert("No hay jugadores nuevos sin partidos.");
+        return;
+      }
+
+      const idsNuevos = jugadoresSinPartidos.map(j => j.id);
+      const idsAntiguos = jugadores
+        .filter(j => !idsNuevos.includes(j.id))
+        .map(j => j.id);
+
+      let rondaBase = partidos.length > 0 ? Math.max(...partidos.map(p => p.ronda)) : 0;
+      let rondaActual = rondaBase + 1;
+
+      // Nuevos vs antiguos
+      idsNuevos.forEach(idNuevo => {
+        idsAntiguos.forEach(idAntiguo => {
+          partidos.push({
+            jug1Id: idNuevo,
+            jug2Id: idAntiguo,
+            ronda: rondaActual,
+            tipo: "Nuevos vs Antiguos"
+          });
+          rondaActual++;
+        });
+      });
+
+      // Nuevos vs nuevos
+      for (let i = 0; i < idsNuevos.length; i++) {
+        for (let j = i + 1; j < idsNuevos.length; j++) {
+          partidos.push({
+            jug1Id: idsNuevos[i],
+            jug2Id: idsNuevos[j],
+            ronda: rondaActual,
+            tipo: "Nuevos"
+          });
+          rondaActual++;
+        }
+      }
+
+      mostrarFixture();
+      calcularTabla();
+      guardarEstado();
+    }
+
     function mostrarFixture() {
       let contenedor = document.getElementById("contenedorFixture");
       contenedor.innerHTML = "<h2>Fixture del Torneo</h2>";
 
-      let rondaActual = 0;
+      let rondaActual = null;
 
       partidos.forEach((partido, index) => {
         if (partido.ronda !== rondaActual) {
           rondaActual = partido.ronda;
-          contenedor.innerHTML += `<h3>Ronda ${rondaActual} ${partido.tipo ? "- " + partido.tipo : ""}</h3>`;
+          contenedor.innerHTML += `<h3>Ronda ${rondaActual} - ${partido.tipo || ""}</h3>`;
         }
 
         let valorA = resultados[index] ? resultados[index].a : "";
@@ -269,11 +444,11 @@
 
         contenedor.innerHTML += `
           <div class="partido">
-            ${partido.jug1}
+            ${obtenerNombreJugador(partido.jug1Id)}
             <input type="number" min="0" id="p${index}a" value="${valorA}" style="width:60px" onchange="guardarResultado(${index})">
             vs
             <input type="number" min="0" id="p${index}b" value="${valorB}" style="width:60px" onchange="guardarResultado(${index})">
-            ${partido.jug2}
+            ${obtenerNombreJugador(partido.jug2Id)}
           </div>
         `;
       });
@@ -307,27 +482,26 @@
       let acumulado = {};
 
       jugadores.forEach(j => {
-        acumulado[j] = [];
+        acumulado[j.id] = [];
       });
 
       partidos.forEach((partido, index) => {
         if (resultados[index]) {
-          acumulado[partido.jug1].push(resultados[index].a);
-          acumulado[partido.jug2].push(resultados[index].b);
+          if (acumulado[partido.jug1Id]) acumulado[partido.jug1Id].push(resultados[index].a);
+          if (acumulado[partido.jug2Id]) acumulado[partido.jug2Id].push(resultados[index].b);
         }
       });
 
-      let tabla = [];
-
-      jugadores.forEach(j => {
-        let detalle = acumulado[j];
+      let tabla = jugadores.map(j => {
+        let detalle = acumulado[j.id] || [];
         let total = detalle.reduce((a, b) => a + b, 0);
 
-        tabla.push({
-          nombre: j,
+        return {
+          id: j.id,
+          nombre: j.nombre,
           total: total,
           detalle: detalle
-        });
+        };
       });
 
       tabla.sort((a, b) => b.total - a.total);
@@ -370,9 +544,11 @@
         partidos = [];
         resultados = {};
         vueltaGenerada = false;
+        ultimoJugadorId = 0;
 
         document.getElementById("numPlayers").value = "";
         document.getElementById("contenedorNombres").innerHTML = "";
+        document.getElementById("panelEdicion").innerHTML = "";
         document.getElementById("contenedorFixture").innerHTML = "";
         document.getElementById("contenedorTabla").innerHTML = "";
       }
